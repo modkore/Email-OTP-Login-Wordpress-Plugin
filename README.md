@@ -1,4 +1,4 @@
-=== NetPointDesigns Email OTP Login ===
+=== NetPointDesigns Email OTP ===
 Contributors: netpointdesigns
 Tags: otp, 2fa, email, login, security
 Requires at least: 5.8
