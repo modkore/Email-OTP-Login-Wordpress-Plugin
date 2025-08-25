@@ -6,6 +6,8 @@
  * Author:      Joseph Pausal (NetPointDesigns)
  * Text Domain: email-otp-login
  * Domain Path: /languages
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  */
 
 if (!defined('ABSPATH')) { exit; }
@@ -361,3 +363,4 @@ class EOL_Email_OTP_Login {
 
 
 new EOL_Email_OTP_Login();
+
