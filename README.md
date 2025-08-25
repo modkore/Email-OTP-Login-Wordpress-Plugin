@@ -80,3 +80,8 @@ email-otp-login/
 
 **Email OTP Login v1.0** is released under the **MIT License**.  
 See [LICENSE](LICENSE) for details.
+ * License: GPLv2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Tags: otp, 2fa, email, login, security
+
