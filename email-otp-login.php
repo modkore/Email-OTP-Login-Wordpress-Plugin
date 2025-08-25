@@ -6,8 +6,12 @@
  * Author:      Joseph Pausal (NetPointDesigns)
  * Text Domain: email-otp-login
  * Domain Path: /languages
- * License: GPLv2 or later
+ * License:     GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ *
+ * Requires at least: 5.8
+ * Tested up to: 6.6
+ * Requires PHP: 7.4
  */
 
 if (!defined('ABSPATH')) { exit; }
@@ -30,22 +34,34 @@ class EOL_Email_OTP_Login {
     const OPT_SCOPE = 'eol_otp_scope'; // 'admins' or 'all'
 
     public function __construct() {
+        // Load translations
+        add_action('plugins_loaded', [$this, 'load_textdomain']);
+
+        // Auth flow
         add_filter('authenticate', [$this, 'intercept_auth'], 30, 3);
         add_action('login_form_' . self::ACTION_SLUG, [$this, 'render_otp_form']);
         add_action('login_init', [$this, 'maybe_handle_resend']);
         add_filter('login_message', [$this, 'login_message']);
 
+        // Assets
         add_action('login_enqueue_scripts', [$this, 'enqueue_assets']);
 
+        // Mail identity
         add_filter('wp_mail_from',      [$this, 'mail_from']);
         add_filter('wp_mail_from_name', [$this, 'mail_from_name']);
 
+        // Settings
         add_action('admin_menu',  [$this, 'add_settings_page']);
         add_action('admin_init',  [$this, 'register_settings']);
         register_activation_hook(__FILE__, [$this, 'on_activate']);
 
         // Plugins list quick links (Settings + Donate)
         add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'action_links']);
+    }
+
+    /** Load plugin text domain */
+    public function load_textdomain() {
+        load_plugin_textdomain('email-otp-login', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
     public function on_activate() {
@@ -79,8 +95,8 @@ class EOL_Email_OTP_Login {
             'digits'      => 6,
             'cooldown'    => (int) self::RESEND_COOLDOWN,
             'remaining'   => (int) $remaining,
-            'resendText'  => 'Resend Code',
-            'resendTitle' => 'Send a new code to your email',
+            'resendText'  => esc_html__('Resend Code', 'email-otp-login'),
+            'resendTitle' => esc_html__('Send a new code to your email', 'email-otp-login'),
         ];
         wp_add_inline_script('eol-otp-script', 'window.EOL_OTP_CFG = ' . wp_json_encode($cfg) . ';', 'before');
     }
@@ -133,15 +149,17 @@ class EOL_Email_OTP_Login {
             $payload = get_transient(self::TRANSIENT_PREFIX . $uid);
 
             if (!$payload || empty($payload['expires']) || time() > $payload['expires']) {
-                $error = 'The code has expired. Please resend a new code.';
+                $error = esc_html__('The code has expired. Please resend a new code.', 'email-otp-login');
             } else {
                 if (empty($payload['attempts'])) {
-                    $error = 'Too many attempts. Please resend a new code.';
+                    $error = esc_html__('Too many attempts. Please resend a new code.', 'email-otp-login');
                 } elseif (!$this->otp_matches($code, $payload['code'])) {
                     $payload['attempts'] = max(0, (int)$payload['attempts'] - 1);
                     set_transient(self::TRANSIENT_PREFIX . $uid, $payload, max(1, $payload['expires'] - time()));
-                    $left = (int)$payload['attempts'];
-                    $error = $left > 0 ? "Incorrect code. Attempts left: {$left}" : 'Too many attempts. Please resend a new code.';
+                    $left  = (int)$payload['attempts'];
+                    $error = $left > 0
+                        ? sprintf(esc_html__('Incorrect code. Attempts left: %d', 'email-otp-login'), $left)
+                        : esc_html__('Too many attempts. Please resend a new code.', 'email-otp-login');
                 } else {
                     $remember = !empty($_COOKIE[self::COOKIE_REMEMBER]);
                     wp_set_auth_cookie($uid, $remember === true || $remember === '1');
@@ -154,41 +172,47 @@ class EOL_Email_OTP_Login {
             }
         }
 
-        login_header(__('Verify your email code'), '', []);
+        login_header(esc_html__('Verify your email code', 'email-otp-login'), '', []);
         ?>
         <div class="eol-wrap">
           <section class="eol-card" role="form" aria-labelledby="eol-title">
-            <h2 id="eol-title" class="eol-title">Check your email</h2>
+            <h2 id="eol-title" class="eol-title"><?php echo esc_html__('Check your email', 'email-otp-login'); ?></h2>
 
             <?php if (!empty($error)) : ?>
               <div class="eol-msg eol-err" role="alert"><?php echo esc_html($error); ?></div>
             <?php endif; ?>
 
-            <p class="eol-sub">We sent a 6-digit code to your account email. Enter it below to finish logging in.</p>
+            <p class="eol-sub">
+                <?php echo esc_html__('We sent a 6-digit code to your account email. Enter it below to finish logging in.', 'email-otp-login'); ?>
+            </p>
 
             <form method="post" id="eol-form" autocomplete="one-time-code" inputmode="numeric">
               <?php wp_nonce_field('eol_otp_verify'); ?>
               <div class="eol-field">
-                <label class="eol-visually-hidden" for="eol-d1">One-Time Code</label>
+                <label class="eol-visually-hidden" for="eol-d1"><?php echo esc_html__('One-Time Code', 'email-otp-login'); ?></label>
                 <div class="eol-otp-grid" data-otp-grid>
                   <?php for ($i=1;$i<=6;$i++): ?>
-                    <input id="eol-d<?php echo $i; ?>" class="eol-otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" name="eol_code_parts[]" aria-label="Digit <?php echo $i; ?>" />
+                    <input id="eol-d<?php echo (int)$i; ?>" class="eol-otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" name="eol_code_parts[]" aria-label="<?php echo esc_attr(sprintf(__('Digit %d', 'email-otp-login'), $i)); ?>" />
                   <?php endfor; ?>
                 </div>
                 <input type="hidden" name="eol_code" value="">
               </div>
 
-              <button class="eol-btn" type="submit" id="eol-submit" disabled>Verify and Continue</button>
+              <button class="eol-btn" type="submit" id="eol-submit" disabled>
+                  <?php echo esc_html__('Verify and Continue', 'email-otp-login'); ?>
+              </button>
 
               <div class="eol-links">
                 <a id="eol-resend"
                    class="eol-resend"
                    href="<?php echo esc_url(add_query_arg(['action'=>self::ACTION_SLUG,'resend'=>'1'], wp_login_url())); ?>"
-                   title="Send a new code to your email"
+                   title="<?php echo esc_attr__('Send a new code to your email', 'email-otp-login'); ?>"
                    data-href="<?php echo esc_url(add_query_arg(['action'=>self::ACTION_SLUG,'resend'=>'1'], wp_login_url())); ?>">
-                   Resend Code
+                   <?php echo esc_html__('Resend Code', 'email-otp-login'); ?>
                 </a>
-                <a href="<?php echo esc_url(wp_login_url()); ?>">Back to Login</a>
+                <a href="<?php echo esc_url(wp_login_url()); ?>">
+                    <?php echo esc_html__('Back to Login', 'email-otp-login'); ?>
+                </a>
               </div>
             </form>
           </section>
@@ -234,7 +258,13 @@ class EOL_Email_OTP_Login {
     }
 
     public function add_settings_page() {
-        add_options_page('Email OTP Login','Email OTP Login','manage_options','eol-otp',[$this,'render_settings_page']);
+        add_options_page(
+            esc_html__('Email OTP Login', 'email-otp-login'),
+            esc_html__('Email OTP Login', 'email-otp-login'),
+            'manage_options',
+            'eol-otp',
+            [$this,'render_settings_page']
+        );
     }
 
     public function register_settings() {
@@ -243,37 +273,57 @@ class EOL_Email_OTP_Login {
             'sanitize_callback' => function($val){ return in_array($val,['admins','all'],true)?$val:'admins'; },
             'default' => 'admins',
         ]);
-        add_settings_section('eol_otp_section', 'General', function(){}, 'eol-otp');
-        add_settings_field(self::OPT_SCOPE,'Who requires OTP?', function(){
-            $v = get_option(self::OPT_SCOPE,'admins'); ?>
-            <label><input type="radio" name="<?php echo esc_attr(self::OPT_SCOPE); ?>" value="admins" <?php checked($v,'admins'); ?> />
-                Admins only (users who can manage options)</label><br>
-            <label><input type="radio" name="<?php echo esc_attr(self::OPT_SCOPE); ?>" value="all" <?php checked($v,'all'); ?> />
-                All users</label>
-        <?php }, 'eol-otp', 'eol_otp_section');
+
+        add_settings_section('eol_otp_section', esc_html__('General', 'email-otp-login'), function(){}, 'eol-otp');
+
+        add_settings_field(
+            self::OPT_SCOPE,
+            esc_html__('Who requires OTP?', 'email-otp-login'),
+            function(){
+                $v = get_option(self::OPT_SCOPE,'admins'); ?>
+                <label>
+                    <input type="radio" name="<?php echo esc_attr(self::OPT_SCOPE); ?>" value="admins" <?php checked($v,'admins'); ?> />
+                    <?php echo esc_html__('Admins only (users who can manage options)', 'email-otp-login'); ?>
+                </label><br>
+                <label>
+                    <input type="radio" name="<?php echo esc_attr(self::OPT_SCOPE); ?>" value="all" <?php checked($v,'all'); ?> />
+                    <?php echo esc_html__('All users', 'email-otp-login'); ?>
+                </label>
+            <?php },
+            'eol-otp',
+            'eol_otp_section'
+        );
     }
 
     public function render_settings_page() {
         if (!current_user_can('manage_options')) return;
         $btc = '1HRqGPqT2cdRqRwh2ViKq79AEKvmHNmHAJ'; ?>
         <div class="wrap">
-            <h1>Email OTP Login</h1>
+            <h1><?php echo esc_html__('Email OTP Login', 'email-otp-login'); ?></h1>
             <form method="post" action="options.php" style="max-width:760px;">
-                <?php settings_fields('eol_otp_group'); do_settings_sections('eol-otp'); submit_button('Save Changes'); ?>
+                <?php
+                settings_fields('eol_otp_group');
+                do_settings_sections('eol-otp');
+                submit_button(esc_html__('Save Changes', 'email-otp-login'));
+                ?>
             </form>
 
             <hr style="margin:24px 0;">
 
             <div class="eol-donate" style="max-width:760px;background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:16px;">
-                <h2 style="margin-top:0;">Buy me a beer 🍺</h2>
-                <p>If this plugin helps you, feel free to tip via <strong>Bitcoin</strong>:</p>
+                <h2 style="margin-top:0;"><?php echo esc_html__('Buy me a beer 🍺', 'email-otp-login'); ?></h2>
+                <p><?php echo wp_kses_post(sprintf(
+                    /* translators: %s = "Bitcoin" */
+                    __('If this plugin helps you, feel free to tip via <strong>%s</strong>:', 'email-otp-login'),
+                    'Bitcoin'
+                )); ?></p>
                 <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                     <code id="eol-btc" style="font-size:14px;padding:6px 8px;display:inline-block;background:#f6f7f7;border:1px solid #dcdcde;border-radius:6px;">
                         <?php echo esc_html($btc); ?>
                     </code>
-                    <button type="button" class="button" id="eol-copy-btc">Copy address</button>
+                    <button type="button" class="button" id="eol-copy-btc"><?php echo esc_html__('Copy address', 'email-otp-login'); ?></button>
                 </div>
-                <p style="color:#646970;margin-top:8px;">BTC address only. Thank you for supporting development!</p>
+                <p style="color:#646970;margin-top:8px;"><?php echo esc_html__('BTC address only. Thank you for supporting development!', 'email-otp-login'); ?></p>
             </div>
         </div>
         <script>
@@ -281,15 +331,20 @@ class EOL_Email_OTP_Login {
             const btn = document.getElementById('eol-copy-btc');
             const el  = document.getElementById('eol-btc');
             if (!btn || !el) return;
+            const LABELS = {
+                copied:    <?php echo wp_json_encode( esc_html__('Copied ✓', 'email-otp-login') ); ?>,
+                copy:      <?php echo wp_json_encode( esc_html__('Copy address', 'email-otp-login') ); ?>,
+                copyFail:  <?php echo wp_json_encode( esc_html__('Copy failed', 'email-otp-login') ); ?>
+            };
             btn.addEventListener('click', async () => {
                 try {
                     const txt = (el.textContent || '').trim();
                     await navigator.clipboard.writeText(txt);
-                    btn.textContent = 'Copied ✓';
-                    setTimeout(()=> btn.textContent = 'Copy address', 1400);
+                    btn.textContent = LABELS.copied;
+                    setTimeout(()=> btn.textContent = LABELS.copy, 1400);
                 } catch(e) {
-                    btn.textContent = 'Copy failed';
-                    setTimeout(()=> btn.textContent = 'Copy address', 1400);
+                    btn.textContent = LABELS.copyFail;
+                    setTimeout(()=> btn.textContent = LABELS.copy, 1400);
                 }
             });
         })();
@@ -299,40 +354,62 @@ class EOL_Email_OTP_Login {
     /** Plugins list quick links */
     public function action_links($links) {
         $settings_url = admin_url('options-general.php?page=eol-otp');
-        $donate_url   = 'bitcoin:1HRqGPqT2cdRqRwh2ViKq79AEKvmHNmHAJ';
+        $donate_label = esc_html__('Buy me a beer 🍺', 'email-otp-login'); // Keep minimal; reviewers sometimes prefer donate links in readme
         $custom = [
-            '<a href="'.esc_url($settings_url).'">Settings</a>',
-            '<a href="'.esc_url($donate_url).'" target="_blank" rel="noopener">Buy me a beer 🍺</a>',
+            '<a href="'.esc_url($settings_url).'">'.esc_html__('Settings', 'email-otp-login').'</a>',
+            // You may comment out the next line if reviewers prefer no donate link here:
+            // '<span>'. $donate_label .'</span>',
         ];
         return array_merge($custom, $links);
     }
 
+    /** Compose & send the OTP email */
     private function send_otp_email(WP_User $user, $otp_plain) {
         $blogname = wp_specialchars_decode(get_option('blogname'), ENT_QUOTES);
-        $subject  = sprintf('[%s] Your Login Code', $blogname);
-        $message  = "A login to your account was requested.\n\nYour one-time code:\n$otp_plain\n\nThis code expires in ".(self::OTP_TTL/60)." minutes.\nIf you did not attempt to log in, you can ignore this email.\n";
-        $headers  = [];
+        $subject  = sprintf('[%s] %s', $blogname, esc_html__('Your Login Code', 'email-otp-login'));
+
+        $lines = [
+            esc_html__('A login to your account was requested.', 'email-otp-login'),
+            '',
+            esc_html__('Your one-time code:', 'email-otp-login'),
+            $otp_plain,
+            '',
+            sprintf(
+                /* translators: %d = minutes */
+                esc_html__('This code expires in %d minutes.', 'email-otp-login'),
+                (int)(self::OTP_TTL/60)
+            ),
+            esc_html__('If you did not attempt to log in, you can ignore this email.', 'email-otp-login'),
+        ];
+        $message = implode("\n", $lines);
+
+        $headers = [];
         $from_email = get_option('admin_email');
-        if ($from_email) $headers[] = 'Reply-To: ' . $from_email;
+        if ($from_email) {
+            $headers[] = 'Reply-To: ' . $from_email;
+        }
         wp_mail($user->user_email, $subject, $message, $headers);
     }
 
+    /** Allow resend if cooldown passed */
     private function can_send_now($uid) {
         $last = get_transient(self::SENT_COOLDOWN_PREFIX . $uid);
         return !$last || (time() - (int)$last) >= self::RESEND_COOLDOWN;
     }
 
+    /** Compare numeric code against hash */
     private function otp_matches($code, $hash) {
         $code = trim($code);
-        if (!preg_match('/^\d{6}$/', $code)) return false;
+        if (!preg_match('/^\d{6}$/', $code)) { return false; }
         return password_verify($code, $hash);
     }
 
+    /** Cookie helpers */
     private function set_cookie($name, $value) {
         setcookie($name, $value, [
             'expires'  => time() + self::OTP_TTL,
-            'path'     => COOKIEPATH ? COOKIEPATH : '/',
-            'domain'   => COOKIE_DOMAIN ? COOKIE_DOMAIN : '',
+            'path'     => defined('COOKIEPATH') && COOKIEPATH ? COOKIEPATH : '/',
+            'domain'   => defined('COOKIE_DOMAIN') && COOKIE_DOMAIN ? COOKIE_DOMAIN : '',
             'secure'   => is_ssl(),
             'httponly' => true,
             'samesite' => 'Lax',
@@ -340,27 +417,35 @@ class EOL_Email_OTP_Login {
         $_COOKIE[$name] = $value;
     }
     private function clear_cookie($name) {
-        setcookie($name, '', time()-3600, COOKIEPATH ? COOKIEPATH : '/', COOKIE_DOMAIN ? COOKIE_DOMAIN : '', is_ssl(), true);
+        setcookie($name, '', time()-3600, defined('COOKIEPATH') && COOKIEPATH ? COOKIEPATH : '/', defined('COOKIE_DOMAIN') && COOKIE_DOMAIN ? COOKIE_DOMAIN : '', is_ssl(), true);
         unset($_COOKIE[$name]);
     }
 
+    /** Mail identity (leave defaults unless you want to change) */
     public function mail_from($email) { return $email; }
-    public function mail_from_name($name) { return self::FROM_NAME ?: $name; }
+    public function mail_from_name($name) {
+        if (self::FROM_NAME && is_string(self::FROM_NAME)) { return self::FROM_NAME; }
+        return $name;
+    }
 
+    /** Nice message on login page if someone lands there mid-flow */
     public function login_message($message) {
-        if (!empty($_REQUEST['action']) && $_REQUEST['action'] === self::ACTION_SLUG) return $message;
+        if (!empty($_REQUEST['action']) && $_REQUEST['action'] === self::ACTION_SLUG) {
+            return $message; // handled by OTP form
+        }
         if (!empty($_COOKIE[self::COOKIE_UID])) {
-            $hint = '<p class="message">A login code was sent to your email. <a href="' .
-                esc_url(add_query_arg(['action'=>self::ACTION_SLUG], wp_login_url())) .
-                '">Enter code</a> or <a href="' .
-                esc_url(add_query_arg(['action'=>self::ACTION_SLUG,'resend'=>'1'], wp_login_url())) .
-                '">resend</a>.</p>';
+            $enter  = esc_html__('Enter code', 'email-otp-login');
+            $resend = esc_html__('resend', 'email-otp-login');
+            $hint = '<p class="message">' .
+                esc_html__('A login code was sent to your email.', 'email-otp-login') . ' ' .
+                '<a href="' . esc_url(add_query_arg(['action'=>self::ACTION_SLUG], wp_login_url())) . '">' . $enter . '</a> ' .
+                esc_html__('or', 'email-otp-login') . ' ' .
+                '<a href="' . esc_url(add_query_arg(['action'=>self::ACTION_SLUG,'resend'=>'1'], wp_login_url())) . '">' . $resend . '</a>.' .
+            '</p>';
             return $hint . $message;
         }
         return $message;
     }
 }
 
-
 new EOL_Email_OTP_Login();
-
