@@ -6,6 +6,7 @@
 **Requires at least:** WordPress 5.8  
 **Tested up to:** 6.6  
 **Requires PHP:** 7.4
+**Supports PHP:** Up to 8.3
 
 Add a second login step via a 6-digit **One-Time Password (OTP)** sent to the user’s email after a correct password. Choose to apply OTP to **Admins only** (default) or to **All users**. Includes a **resend with cooldown + on-screen countdown**, a clean six-box input UI, and full i18n support.
 
