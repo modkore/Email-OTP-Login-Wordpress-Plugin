@@ -43,6 +43,39 @@ email-otp-login/
 
 ---
 
+🔐 Security & Privacy
+- OTP codes are hashed (password_hash) and stored in transients, then removed on success/expiry.
+- No external tracking or remote code execution.
+- Cookies are set with httponly and SameSite=Lax.
+- A nonce is used on verification POST.
+
+🖼️ UI/UX Notes
+- Six individual inputs with auto-advance and paste support.
+- Disabled “Verify” button until all digits are entered.
+- “Resend Code” shows a countdown and becomes clickable when the cooldown ends.
+
+🌐 Localization
+- Text domain: email-otp-login
+- Load path: Domain Path: /languages
+- Wrap any new user-facing strings with __(), _e(), esc_html__(), etc.
+
+🛠 Development
+- CSS: assets/css/otp.css
+- JavaScript: assets/js/otp.js (reads window.EOL_OTP_CFG for cooldown + labels)
+- PRs and issues are welcome.
+
+💖 Support / Donations
+- If this plugin saved you time, you can buy me a beer 🍺
+- Bitcoin (BTC): 1HRqGPqT2cdRqRwh2ViKq79AEKvmHNmHAJ
+- For the WordPress.org listing, use an HTTPS “Donate link” page instead of a bitcoin: URI.
+
+🧭 Roadmap
+- Per-role scope (beyond admins/all)
+- Custom email templates
+- Trusted devices (remember for X days)
+
+WP-CLI helpers (issue/verify codes for testing)
+
 ## ⚙️ Configuration
 
 - **Admins only**: Only users with `manage_options` capability pass the OTP step.
