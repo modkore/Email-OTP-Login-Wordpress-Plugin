@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: NetPointDesigns Email OTP Login
+ * Plugin Name: NetPointDesigns Email OTP
  * Description: Enables a 2FA option for users, sending a 6-digit OTP to their email. An admin setting allows this to be applied to all users or only to administrators.
  * Version:     1.0
  * Author:      Joseph Pausal (NetPointDesigns)
@@ -495,3 +495,4 @@ class EOL_Email_OTP_Login {
 }
 
 new EOL_Email_OTP_Login();
+
