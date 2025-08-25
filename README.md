@@ -1,18 +1,17 @@
-=== Email OTP Login ===
-
+=== NetPointDesigns Email OTP Login ===
 Contributors: netpointdesigns
 Tags: otp, 2fa, email, login, security
 Requires at least: 5.8
-Tested up to: 6.6
+Tested up to: 6.8
 Requires PHP: 7.4
 Stable tag: 1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Secure your WordPress login with a simple email-based 6-digit OTP after password. Choose Admins only or All users. Includes resend with cooldown and on-screen countdown.
+Add a 6-digit email OTP after password. Choose Admins only or All users. Includes resend with cooldown and on-screen countdown.
 
 == Description ==
-**Email OTP Login** adds a second login step via a 6-digit One-Time Password (OTP) sent to the user’s account email **after** a correct username/password. It’s lightweight, uses native `wp_mail()`, stores OTPs hashed in transients, and provides a clean, accessible six-box input UI with auto-advance and paste support.
+**Email OTP Login** Adds a second login step with a 6-digit email OTP. Admins can apply this 2FA to all users or just other admins.
 
 **Highlights**
 - 6-digit OTP, **10-minute** expiry
