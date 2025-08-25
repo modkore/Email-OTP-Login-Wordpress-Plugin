@@ -4,6 +4,8 @@
  * Description: Adds a second login step via a 6-digit email OTP. Includes an admin setting to apply to admins only or all users.
  * Version:     1.0
  * Author:      Joseph Pausal (NetPointDesigns)
+ * Text Domain: email-otp-login
+ * Domain Path: /languages
  */
 
 if (!defined('ABSPATH')) { exit; }
@@ -356,5 +358,6 @@ class EOL_Email_OTP_Login {
         return $message;
     }
 }
+
 
 new EOL_Email_OTP_Login();
