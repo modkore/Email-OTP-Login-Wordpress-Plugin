@@ -1,0 +1,12 @@
+Changelog
+v1.0
+
+Initial release: email OTP after password, 10-minute expiry, 5 attempts.
+
+Admins-only or All-users scope.
+
+Resend with 60s cooldown + UI countdown.
+
+Modern six-box input with auto-advance and paste support.
+
+i18n ready; local assets only.
